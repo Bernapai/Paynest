@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,10 +11,13 @@ import { PaymentStatus } from './enums/payment-provider.enum';
 import { Payment } from './entities/payment.entity';
 import { PaypalService } from './providers/paypal.service';
 import { StripeService } from './providers/stripe.service';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
 
 
 
-@ApiTags('payments') // Grupo en Swagger
+
+@ApiTags('payments')
+@UseGuards(AuthGuard) // Grupo en Swagger
 @Controller('payments')
 export class PaymentController {
   constructor(
