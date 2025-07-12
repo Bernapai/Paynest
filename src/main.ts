@@ -3,12 +3,17 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
+import * as bodyParser from 'body-parser';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
+
+  app.use('/webhook/stripe', bodyParser.raw({ type: 'application/json' }));
+
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -23,19 +23,11 @@ Incluye autenticación, manejo de usuarios, pagos, webhooks para confirmación d
 - [PayPal Checkout SDK](https://developer.paypal.com/docs/api/overview/)
 - [JWT](https://jwt.io/) para autenticación
 - [@nestjs/config](https://docs.nestjs.com/techniques/configuration) para configuración
-- [Joi](https://joi.dev/) para validación de variables de entorno
 - Base de datos (a elegir: PostgreSQL, MongoDB, MySQL, etc.)
 
 ---
 
 ## ⚙️ Configuración
 
-1. Copiar el archivo `.env.example` a `.env` y completar con tus claves:
+1. Copiar el archivo `.env.template` a `.env` y completar con tus claves
 
-```env
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-PAYPAL_CLIENT_ID=...
-PAYPAL_CLIENT_SECRET=...
-JWT_SECRET=...
-PORT=3000

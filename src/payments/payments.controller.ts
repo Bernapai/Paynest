@@ -1,34 +1,75 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import Stripe from 'stripe';
 
+// Importá los DTOs y enums
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentProvider } from './enums/payment-provider.enum';
+import { PaymentStatus } from './enums/payment-provider.enum';
+import { Payment } from './entities/payment.entity';
+import { PaypalService } from './providers/paypal.service';
+import { StripeService } from './providers/stripe.service';
+
+
+
+@ApiTags('payments') // Grupo en Swagger
 @Controller('payments')
-export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+export class PaymentController {
+  constructor(
+    private readonly stripeService: StripeService,
+    private readonly paypalService: PaypalService,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
+  ) { }
 
   @Post()
-  create(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentsService.create(createPaymentDto);
-  }
+  @ApiOperation({ summary: 'Crear un pago con Stripe o PayPal' })
+  @ApiBody({ type: CreatePaymentDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Pago creado exitosamente',
+    schema: {
+      example: {
+        paymentId: '1',
+        provider: 'STRIPE',
+        data: {}, // Aquí podría ser un objeto más detallado según provider
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Proveedor no soportado' })
+  async createPayment(@Body() createPaymentDto: CreatePaymentDto) {
+    const { provider } = createPaymentDto;
 
-  @Get()
-  findAll() {
-    return this.paymentsService.findAll();
-  }
+    let paymentResponse: Stripe.PaymentIntent | PaypalOrderResponse;
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.paymentsService.findOne(+id);
-  }
+    switch (provider) {
+      case PaymentProvider.STRIPE:
+        paymentResponse = await this.stripeService.createPaymentIntent(createPaymentDto);
+        break;
+      case PaymentProvider.PAYPAL:
+        paymentResponse = await this.paypalService.createOrder(createPaymentDto);
+        break;
+      default:
+        throw new HttpException('Provider not supported', HttpStatus.BAD_REQUEST);
+    }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto) {
-    return this.paymentsService.update(+id, updatePaymentDto);
-  }
+    const payment = this.paymentRepository.create({
+      amount: createPaymentDto.amount,
+      currency: createPaymentDto.currency,
+      provider: createPaymentDto.provider,
+      providerPaymentId: paymentResponse.id,
+      status: PaymentStatus.PENDING,
+    });
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.paymentsService.remove(+id);
+    await this.paymentRepository.save(payment);
+
+    return {
+      paymentId: payment.id,
+      provider: payment.provider,
+      data: paymentResponse,
+    };
   }
 }
+
